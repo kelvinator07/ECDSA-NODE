@@ -1,7 +1,8 @@
 import { useState } from "react";
 import server from "./server";
+import wallet from "./LocalWallet";
 
-function Transfer({ address, setBalance }) {
+function Transfer({ user, setBalance }) {
   const [sendAmount, setSendAmount] = useState("");
   const [recipient, setRecipient] = useState("");
 
@@ -10,17 +11,28 @@ function Transfer({ address, setBalance }) {
   async function transfer(evt) {
     evt.preventDefault();
 
+    // build the transaction payload composed of
+    // the message itself (amount to transfer and recipient) and
+    // the signature of the transaction build from the user private key
+    // and the message, inside the wallet.
+    const message = {
+      amount: parseInt(sendAmount),
+      recipient,
+    };
+    const signature = await wallet.sign(user, message);
+    const transaction = {
+      message,
+      signature,
+    };
+
     try {
       const {
         data: { balance },
-      } = await server.post(`send`, {
-        sender: address,
-        amount: parseInt(sendAmount),
-        recipient,
-      });
+      } = await server.post(`send`, transaction);
+
       setBalance(balance);
     } catch (ex) {
-      alert(ex.response.data.message);
+      alert(ex);
     }
   }
 
@@ -40,7 +52,7 @@ function Transfer({ address, setBalance }) {
       <label>
         Recipient
         <input
-          placeholder="Type an address, for example: 0x2"
+          placeholder="Type a User address, for example: BE13"
           value={recipient}
           onChange={setValue(setRecipient)}
         ></input>
